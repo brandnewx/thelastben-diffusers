@@ -716,7 +716,7 @@ def main():
                 pipeline.text_encoder.save_pretrained(frz_dir)
                          
             if args.save_n_steps >= 200:
-               if global_step < args.max_train_steps-100 and global_step+1==i:
+               if global_step < args.max_train_steps and global_step+1==i:
                   ckpt_name = "_step_" + str(global_step+1)
                   save_dir = Path(args.output_dir+ckpt_name)
                   save_dir=str(save_dir)
