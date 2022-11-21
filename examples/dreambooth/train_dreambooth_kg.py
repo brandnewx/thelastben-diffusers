@@ -20,7 +20,7 @@ from diffusers.optimization import get_scheduler
 from huggingface_hub import HfFolder, Repository, whoami
 from PIL import Image
 from torchvision import transforms
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
 
