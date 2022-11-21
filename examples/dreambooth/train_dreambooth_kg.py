@@ -686,8 +686,9 @@ def main():
 
             # Checks if the accelerator has performed an optimization step behind the scenes
             if accelerator.sync_gradients:
-                progress_bar.update(1)
-                global_step += 1
+                #progress_bar.update(1)                
+                global_step += 1                
+                bar(global_step)
 
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
