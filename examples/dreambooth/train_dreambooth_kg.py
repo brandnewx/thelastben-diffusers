@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 import subprocess
 import sys
-
+from IPython.display import clear_output
 import torch
 import torch.nn.functional as F
 import torch.utils.checkpoint
@@ -692,13 +692,13 @@ def main():
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
             pr=bar(fll)
-            
+            clear_output()
+            pr
             #logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             #progress_bar.set_postfix(**logs)
             #progress_bar.set_description_str("Progress:")
             #accelerator.log(logs, step=global_step)
-            sys.stdout.write(" [0;32m" +pr+" [0m")
-            sys.stdout.flush()
+
             
             
             if global_step >= args.max_train_steps:
