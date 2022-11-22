@@ -636,120 +636,120 @@ def main():
     progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
     global_step = 0
 
-    for epoch in range(args.num_train_epochs):
-        unet.train()
-        if args.train_text_encoder:
-            text_encoder.train()
-        for step, batch in enumerate(train_dataloader):
-            with accelerator.accumulate(unet):
-                # Convert images to latent space
-                latents = vae.encode(batch["pixel_values"].to(dtype=weight_dtype)).latent_dist.sample()
-                latents = latents * 0.18215
+    #for epoch in range(args.num_train_epochs):
+    unet.train()
+    if args.train_text_encoder:
+        text_encoder.train()
+    for step, batch in enumerate(train_dataloader):
+        with accelerator.accumulate(unet):
+            # Convert images to latent space
+            latents = vae.encode(batch["pixel_values"].to(dtype=weight_dtype)).latent_dist.sample()
+            latents = latents * 0.18215
 
-                # Sample noise that we'll add to the latents
-                noise = torch.randn_like(latents)
-                bsz = latents.shape[0]
-                # Sample a random timestep for each image
-                timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
-                timesteps = timesteps.long()
+            # Sample noise that we'll add to the latents
+            noise = torch.randn_like(latents)
+            bsz = latents.shape[0]
+            # Sample a random timestep for each image
+            timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+            timesteps = timesteps.long()
 
-                # Add noise to the latents according to the noise magnitude at each timestep
-                # (this is the forward diffusion process)
-                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+            # Add noise to the latents according to the noise magnitude at each timestep
+            # (this is the forward diffusion process)
+            noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
-                # Get the text embedding for conditioning
-                encoder_hidden_states = text_encoder(batch["input_ids"])[0]
+            # Get the text embedding for conditioning
+            encoder_hidden_states = text_encoder(batch["input_ids"])[0]
 
-                # Predict the noise residual
-                noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
+            # Predict the noise residual
+            noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
-                if args.with_prior_preservation:
-                    # Chunk the noise and noise_pred into two parts and compute the loss on each part separately.
-                    noise_pred, noise_pred_prior = torch.chunk(noise_pred, 2, dim=0)
-                    noise, noise_prior = torch.chunk(noise, 2, dim=0)
+            if args.with_prior_preservation:
+                # Chunk the noise and noise_pred into two parts and compute the loss on each part separately.
+                noise_pred, noise_pred_prior = torch.chunk(noise_pred, 2, dim=0)
+                noise, noise_prior = torch.chunk(noise, 2, dim=0)
 
-                    # Compute instance loss
-                    loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="none").mean([1, 2, 3]).mean()
+                # Compute instance loss
+                loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="none").mean([1, 2, 3]).mean()
 
-                    # Compute prior loss
-                    prior_loss = F.mse_loss(noise_pred_prior.float(), noise_prior.float(), reduction="mean")
+                # Compute prior loss
+                prior_loss = F.mse_loss(noise_pred_prior.float(), noise_prior.float(), reduction="mean")
 
-                    # Add the prior loss to the instance loss.
-                    loss = loss + args.prior_loss_weight * prior_loss
-                else:
-                    loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="mean")
+                # Add the prior loss to the instance loss.
+                loss = loss + args.prior_loss_weight * prior_loss
+            else:
+                loss = F.mse_loss(noise_pred.float(), noise.float(), reduction="mean")
 
-                accelerator.backward(loss)
-                if accelerator.sync_gradients:
-                    params_to_clip = (
-                        itertools.chain(unet.parameters(), text_encoder.parameters())
-                        if args.train_text_encoder
-                        else unet.parameters()
-                    )
-                    accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm)
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-
-            # Checks if the accelerator has performed an optimization step behind the scenes
+            accelerator.backward(loss)
             if accelerator.sync_gradients:
-                progress_bar.update(1)
-                global_step += 1
-                
-            fll=round((global_step*100)/args.max_train_steps)
-            fll=round(fll/4)
-            pr=bar(fll)
-            
-            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
-            progress_bar.set_postfix(**logs)
-            progress_bar.set_description_str("Progress:")
-            accelerator.log(logs, step=global_step)
-
-            if global_step >= args.max_train_steps:
-                break
-
-            if args.train_text_encoder and global_step == args.stop_text_encoder_training and global_step >= 30:
-              if accelerator.is_main_process:
-                print(" [0;32m" +" Freezing the text_encoder ..."+" [0m")                
-                frz_dir=args.output_dir + "/text_encoder_frozen"
-                if os.path.exists(frz_dir):
-                  subprocess.call('rm -r '+ frz_dir, shell=True)
-                os.mkdir(frz_dir)
-                pipeline = StableDiffusionPipeline.from_pretrained(
-                    args.pretrained_model_name_or_path,
-                    unet=accelerator.unwrap_model(unet),
-                    text_encoder=accelerator.unwrap_model(text_encoder),
+                params_to_clip = (
+                    itertools.chain(unet.parameters(), text_encoder.parameters())
+                    if args.train_text_encoder
+                    else unet.parameters()
                 )
-                pipeline.text_encoder.save_pretrained(frz_dir)
-                         
-            if args.save_n_steps >= 200:
-               if global_step < args.max_train_steps-100 and global_step+1==i:
-                  ckpt_name = "_step_" + str(global_step+1)
-                  save_dir = Path(args.output_dir+ckpt_name)
-                  save_dir=str(save_dir)
-                  save_dir=save_dir.replace(" ", "_")                    
-                  if not os.path.exists(save_dir):
-                     os.mkdir(save_dir)
-                  inst=save_dir[16:]
-                  inst=inst.replace(" ", "_")
-                  print(" [1;32mSAVING CHECKPOINT: "+args.Session_dir+"/"+inst+".ckpt")
-                  # Create the pipeline using the trained modules and save it.
-                  if accelerator.is_main_process:
-                     pipeline = StableDiffusionPipeline.from_pretrained(
-                           args.pretrained_model_name_or_path,
-                           unet=accelerator.unwrap_model(unet),
-                           text_encoder=accelerator.unwrap_model(text_encoder),
-                     )
-                     pipeline.save_pretrained(save_dir)
-                     frz_dir=args.output_dir + "/text_encoder_frozen"                    
-                     if args.train_text_encoder and os.path.exists(frz_dir):
-                        subprocess.call('rm -r '+save_dir+'/text_encoder/*.*', shell=True)
-                        subprocess.call('cp -f '+frz_dir +'/*.* '+ save_dir+'/text_encoder', shell=True)                     
-                     chkpth=args.Session_dir+"/"+inst+".ckpt"
-                     subprocess.call('python /kaggle/working/diffusers/scripts/convert_diffusers_to_original_stable_diffusion.py --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
-                     i=i+args.save_n_steps
-            
-        accelerator.wait_for_everyone()
+                accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm)
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
+
+        # Checks if the accelerator has performed an optimization step behind the scenes
+        if accelerator.sync_gradients:
+            progress_bar.update(1)
+            global_step += 1
+
+        fll=round((global_step*100)/args.max_train_steps)
+        fll=round(fll/4)
+        pr=bar(fll)
+
+        logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+        progress_bar.set_postfix(**logs)
+        progress_bar.set_description_str("Progress:")
+        accelerator.log(logs, step=global_step)
+
+        if global_step >= args.max_train_steps:
+            break
+
+        if args.train_text_encoder and global_step == args.stop_text_encoder_training and global_step >= 30:
+          if accelerator.is_main_process:
+            print(" [0;32m" +" Freezing the text_encoder ..."+" [0m")                
+            frz_dir=args.output_dir + "/text_encoder_frozen"
+            if os.path.exists(frz_dir):
+              subprocess.call('rm -r '+ frz_dir, shell=True)
+            os.mkdir(frz_dir)
+            pipeline = StableDiffusionPipeline.from_pretrained(
+                args.pretrained_model_name_or_path,
+                unet=accelerator.unwrap_model(unet),
+                text_encoder=accelerator.unwrap_model(text_encoder),
+            )
+            pipeline.text_encoder.save_pretrained(frz_dir)
+
+        if args.save_n_steps >= 200:
+           if global_step < args.max_train_steps-100 and global_step+1==i:
+              ckpt_name = "_step_" + str(global_step+1)
+              save_dir = Path(args.output_dir+ckpt_name)
+              save_dir=str(save_dir)
+              save_dir=save_dir.replace(" ", "_")                    
+              if not os.path.exists(save_dir):
+                 os.mkdir(save_dir)
+              inst=save_dir[16:]
+              inst=inst.replace(" ", "_")
+              print(" [1;32mSAVING CHECKPOINT: "+args.Session_dir+"/"+inst+".ckpt")
+              # Create the pipeline using the trained modules and save it.
+              if accelerator.is_main_process:
+                 pipeline = StableDiffusionPipeline.from_pretrained(
+                       args.pretrained_model_name_or_path,
+                       unet=accelerator.unwrap_model(unet),
+                       text_encoder=accelerator.unwrap_model(text_encoder),
+                 )
+                 pipeline.save_pretrained(save_dir)
+                 frz_dir=args.output_dir + "/text_encoder_frozen"                    
+                 if args.train_text_encoder and os.path.exists(frz_dir):
+                    subprocess.call('rm -r '+save_dir+'/text_encoder/*.*', shell=True)
+                    subprocess.call('cp -f '+frz_dir +'/*.* '+ save_dir+'/text_encoder', shell=True)                     
+                 chkpth=args.Session_dir+"/"+inst+".ckpt"
+                 subprocess.call('python /kaggle/working/diffusers/scripts/convert_diffusers_to_original_stable_diffusion.py --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
+                 i=i+args.save_n_steps
+
+    accelerator.wait_for_everyone()
 
     # Create the pipeline using using the trained modules and save it.
     if accelerator.is_main_process:
