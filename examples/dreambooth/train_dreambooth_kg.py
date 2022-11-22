@@ -692,7 +692,6 @@ def main():
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
             pr=bar(fll)
-            clear_output()
             pr
             #logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             #progress_bar.set_postfix(**logs)
