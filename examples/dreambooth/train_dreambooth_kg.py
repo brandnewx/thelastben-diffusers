@@ -626,7 +626,7 @@ def main():
     logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
     # Only show the progress bar once on each machine.
-    #progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
+    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
     global_step = 0
 
     for epoch in range(args.num_train_epochs):
@@ -686,17 +686,16 @@ def main():
 
             # Checks if the accelerator has performed an optimization step behind the scenes
             if accelerator.sync_gradients:
-                #progress_bar.update(1)
+                progress_bar.update(1)
                 global_step += 1
 
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
             pr=bar(fll)
-            pr
-            #logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
-            #progress_bar.set_postfix(**logs)
-            #progress_bar.set_description_str("Progress:")
-            #accelerator.log(logs, step=global_step)
+            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+            progress_bar.set_postfix(**logs)
+            progress_bar.set_description_str("Progress:")
+            accelerator.log(logs, step=global_step)
 
             
             
