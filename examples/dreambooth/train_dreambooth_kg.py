@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 import subprocess
 import sys
+
 import torch
 import torch.nn.functional as F
 import torch.utils.checkpoint
@@ -611,8 +612,8 @@ def main():
 
     def bar(prg):
        br='|'+'█' * prg + ' ' * (25-prg)+'|'
-       return br    
-        
+       return br
+
     # Train!
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
 
@@ -691,13 +692,12 @@ def main():
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
             pr=bar(fll)
+            
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
             progress_bar.set_description_str("Progress:")
             accelerator.log(logs, step=global_step)
 
-            
-            
             if global_step >= args.max_train_steps:
                 break
 
