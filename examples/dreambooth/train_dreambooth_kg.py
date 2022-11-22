@@ -238,8 +238,8 @@ def parse_args():
     
     parser.add_argument(
         "--Resumetr",
-        action="store_true",
-        default=False,        
+        type=str,
+        default="False",        
         help="Resume training info",
     )    
     
@@ -626,7 +626,7 @@ def main():
     
     def tr(args.Resumetr):
         clear_output()
-        if args.Resumetr:
+        if args.Resumetr=="True":
            print('[1;32mResuming Training...[0m')
         training=figlet_format('Training', font="banner3-D")
         c_training=colored(training, "blue")
