@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Optional
 import subprocess
 import sys
-from IPython.display import clear_output
 import torch
 import torch.nn.functional as F
 import torch.utils.checkpoint
