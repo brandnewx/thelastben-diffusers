@@ -9,6 +9,7 @@ import sys
 
 from pyfiglet import figlet_format
 from termcolor import colored
+from IPython.display import clear_output
 
 import torch
 import torch.nn.functional as F
