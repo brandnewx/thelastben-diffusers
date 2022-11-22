@@ -612,8 +612,8 @@ def main():
 
     def bar(prg):
        br='|'+'█' * prg + ' ' * (25-prg)+'|'
-       return br
-
+       return br    
+        
     # Train!
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
 
@@ -626,7 +626,7 @@ def main():
     logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
+    #progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
     global_step = 0
 
     for epoch in range(args.num_train_epochs):
@@ -693,11 +693,14 @@ def main():
             fll=round(fll/4)
             pr=bar(fll)
             
-            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
-            progress_bar.set_postfix(**logs)
-            progress_bar.set_description_str("Progress:")
-            accelerator.log(logs, step=global_step)
-
+            #logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+            #progress_bar.set_postfix(**logs)
+            #progress_bar.set_description_str("Progress:")
+            #accelerator.log(logs, step=global_step)
+            sys.stdout.write(" [0;32m" +pr+" [0m")
+            sys.stdout.flush()
+            
+            
             if global_step >= args.max_train_steps:
                 break
 
