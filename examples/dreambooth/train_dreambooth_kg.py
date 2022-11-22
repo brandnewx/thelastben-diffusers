@@ -623,10 +623,10 @@ def main():
     def bar(prg):
        br='|'+'█' * prg + ' ' * (25-prg)+'|'
        return br
-    
-    def tr(args.Resumetr):
+    restr=args.Resumetr
+    def tr(restr):
         clear_output()
-        if args.Resumetr=="True":
+        if restr=="True":
            print('[1;32mResuming Training...[0m')
         training=figlet_format('Training', font="banner3-D")
         c_training=colored(training, "blue")
@@ -707,7 +707,7 @@ def main():
             if accelerator.sync_gradients:
                 progress_bar.update(1)
                 global_step += 1
-                tr(args.Resumetr)
+                tr(restr)
                 
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
