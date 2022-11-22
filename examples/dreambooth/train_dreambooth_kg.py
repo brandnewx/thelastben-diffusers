@@ -7,10 +7,6 @@ from typing import Optional
 import subprocess
 import sys
 
-from pyfiglet import figlet_format
-from termcolor import colored
-from IPython.display import clear_output
-
 import torch
 import torch.nn.functional as F
 import torch.utils.checkpoint
@@ -624,15 +620,6 @@ def main():
     def bar(prg):
        br='|'+'█' * prg + ' ' * (25-prg)+'|'
        return br
-    restr=args.Resumetr
-    def tr(restr):
-        clear_output()
-        if restr=="True":
-           print('[1;32mResuming Training...[0m')
-        training=figlet_format('Training', font="banner3-D")
-        c_training=colored(training, "blue")
-        print(c_training)    
-    
     
     # Train!
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
@@ -708,7 +695,6 @@ def main():
             if accelerator.sync_gradients:
                 progress_bar.update(1)
                 global_step += 1
-                tr(restr)
                 
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
