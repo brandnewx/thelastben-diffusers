@@ -723,7 +723,7 @@ def main():
                   save_dir=save_dir.replace(" ", "_")                    
                   if not os.path.exists(save_dir):
                      os.mkdir(save_dir)
-                  inst=save_dir[16:]
+                  inst=os.path.dirname(args.output_dir)+ckpt_name
                   inst=inst.replace(" ", "_")
                   print(" [1;32mSAVING CHECKPOINT: "+args.Session_dir+"/"+inst+".ckpt")
                   # Create the pipeline using the trained modules and save it.
@@ -739,7 +739,7 @@ def main():
                         subprocess.call('rm -r '+save_dir+'/text_encoder/*.*', shell=True)
                         subprocess.call('cp -f '+frz_dir +'/*.* '+ save_dir+'/text_encoder', shell=True)                     
                      chkpth=args.Session_dir+"/"+inst+".ckpt"
-                     subprocess.call('python /content/diffusers/scripts/convert_diffusers_to_original_stable_diffusion.py --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
+                     subprocess.call('python3 /content/diffusers/scripts/convert_diffusers_to_original_stable_diffusion.py --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
                      i=i+args.save_n_steps
             
         accelerator.wait_for_everyone()
