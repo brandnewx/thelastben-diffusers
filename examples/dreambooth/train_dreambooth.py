@@ -730,7 +730,7 @@ def main():
                          
             if args.save_n_steps >= 200:
                if global_step+1 < args.max_train_steps and global_step+1==i:
-                  ckpt_name = "_step_" + str(global_step+1)
+                  ckpt_name = "_" + str(global_step+1)
                   save_dir = Path(args.output_dir+ckpt_name)
                   save_dir=str(save_dir)
                   save_dir=save_dir.replace(" ", "_")                    
