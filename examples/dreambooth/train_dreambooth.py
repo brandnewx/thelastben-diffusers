@@ -729,7 +729,7 @@ def main():
                   save_dir=save_dir.replace(" ", "_")                    
                   if not os.path.exists(save_dir):
                      os.mkdir(save_dir)
-                  inst=os.path.dirname(args.output_dir)+ckpt_name
+                  inst=os.path.basename(os.path.dirname(args.output_dir+'/'))+ckpt_name
                   inst=inst.replace(" ", "_")
                   print(" [1;32mSAVING CHECKPOINT: "+args.Session_dir+"/"+inst+".ckpt")
                   # Create the pipeline using the trained modules and save it.
