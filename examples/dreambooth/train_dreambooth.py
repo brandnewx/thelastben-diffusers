@@ -36,6 +36,13 @@ def parse_args():
         help="Flag to save intermediary dirs.",
     )
     parser.add_argument(
+        "--diffusers_to_ckpt_script_path",
+        type=str,
+        default="/content/diffusers/scripts/convert_diffusers_to_original_stable_diffusion.py",
+        required=True,
+        help="Path to the script to convert diffusers model to SD ckpt file.",
+    )
+    parser.add_argument(
         "--pretrained_model_name_or_path",
         type=str,
         default=None,
@@ -722,7 +729,7 @@ def main():
                 pipeline.text_encoder.save_pretrained(frz_dir)
                          
             if args.save_n_steps >= 200:
-               if global_step < args.max_train_steps and global_step+1==i:
+               if global_step+1 < args.max_train_steps and global_step+1==i:
                   ckpt_name = "_step_" + str(global_step+1)
                   save_dir = Path(args.output_dir+ckpt_name)
                   save_dir=str(save_dir)
@@ -745,7 +752,7 @@ def main():
                         subprocess.call('rm -r '+save_dir+'/text_encoder/*.*', shell=True)
                         subprocess.call('cp -f '+frz_dir +'/*.* '+ save_dir+'/text_encoder', shell=True)                     
                      chkpth=args.Session_dir+"/"+inst+".ckpt"
-                     subprocess.call('python3 /content/diffusers/scripts/convert_diffusers_to_original_stable_diffusion.py --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
+                     subprocess.call('python3 ' + args.diffusers_to_ckpt_script_path + ' --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
                      i=i+args.save_n_steps
 
                      if not args.save_intermediary_dirs:
