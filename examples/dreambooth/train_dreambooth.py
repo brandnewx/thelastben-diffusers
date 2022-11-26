@@ -30,6 +30,12 @@ logger = get_logger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
+        "--save_intermediary_dirs",
+        default=False,
+        action="store_true",
+        help="Flag to save intermediary dirs.",
+    )
+    parser.add_argument(
         "--pretrained_model_name_or_path",
         type=str,
         default=None,
@@ -741,6 +747,9 @@ def main():
                      chkpth=args.Session_dir+"/"+inst+".ckpt"
                      subprocess.call('python3 /content/diffusers/scripts/convert_diffusers_to_original_stable_diffusion.py --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
                      i=i+args.save_n_steps
+
+                     if not args.save_intermediary_dirs:
+                        subprocess.call('rm -rf '+ save_dir, shell=True)
             
         accelerator.wait_for_everyone()
 
