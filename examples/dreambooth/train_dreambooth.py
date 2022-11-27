@@ -356,7 +356,7 @@ class DreamBoothDataset(Dataset):
 
         example["instance_images"] = self.image_transforms(instance_image)
         example["instance_prompt_ids"] = self.tokenizer(
-            instance_prompt,
+            instance_prompt,su
             padding="do_not_pad",
             truncation=True,
             max_length=self.tokenizer.model_max_length,
@@ -716,10 +716,6 @@ def main():
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
             pr=bar(fll)
-
-            if accelerator.sync_gradients and accelerator.is_main_process and global_step % 20 == 0:
-                print("")
-                sys.stdout.flush()
             
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
@@ -768,7 +764,7 @@ def main():
                         #subprocess.call('rm -r '+save_dir+'/text_encoder/*.*', shell=True)
                         #subprocess.call('cp -f '+frz_dir +'/*.* '+ save_dir+'/text_encoder', shell=True)
                         shutil.rmtree(save_dir+'/text_encoder')
-                        shutil.copytree(frz_dir, save_dir+'/text_encoder')                     
+                        shutil.copytree(frz_dir, save_dir+'/text_encoder', dirs_exist_ok=True)                     
                      chkpth=args.Session_dir+"/"+inst+".ckpt"
                      subprocess.call('python3 ' + args.diffusers_to_ckpt_script_path + ' --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
                      i=i+args.save_n_steps
@@ -776,6 +772,10 @@ def main():
                      if not args.save_intermediary_dirs:
                         #subprocess.call('rm -rf '+ save_dir, shell=True)
                         shutil.rmtree(save_dir)
+
+            if accelerator.sync_gradients and accelerator.is_main_process and global_step % 20 == 0:
+                print("")
+                sys.stdout.flush()
             
         accelerator.wait_for_everyone()
 
@@ -801,7 +801,8 @@ def main():
         pipeline.save_pretrained(args.output_dir)
         txt_dir=args.output_dir + "/text_encoder_trained"
         #subprocess.call('rm -r '+txt_dir, shell=True)
-        shutil.rmtree(txt_dir)
+        if os.path.isdir(txt_dir):
+            shutil.rmtree(txt_dir)
      
       else:
         pipeline = StableDiffusionPipeline.from_pretrained(
@@ -814,7 +815,10 @@ def main():
         if args.train_text_encoder and os.path.exists(frz_dir):
            #subprocess.call('mv -f '+frz_dir +'/*.* '+ args.output_dir+'/text_encoder', shell=True)
            #subprocess.call('rm -r '+ frz_dir, shell=True)
-           shutil.move(frz_dir, args.output_dir+'/text_encoder') 
+           if os.path.isdir(args.output_dir+'/text_encoder'):
+               shutil.rmtree(args.output_dir+'/text_encoder')
+           shutil.copytree(frz_dir, args.output_dir+'/text_encoder', dirs_exist_ok=True) 
+           shutil.rmtree(frz_dir)
 
         if args.push_to_hub:
             repo.push_to_hub(commit_message="End of training", blocking=False, auto_lfs_prune=True)
