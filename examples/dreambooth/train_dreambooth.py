@@ -744,7 +744,7 @@ def main():
                          
             if args.save_n_steps >= 200:
                if global_step+1 < args.max_train_steps and global_step+1==i:
-                  ckpt_name = "_" + str(session.session_step+global_step+1)
+                  ckpt_name = "_" + str(session["session_step"]+global_step+1)
                   save_dir = Path(args.output_dir+ckpt_name)
                   save_dir=str(save_dir)
                   save_dir=save_dir.replace(" ", "_")                    
@@ -815,7 +815,7 @@ def main():
     accelerator.end_training()
 
     # Save state for resuming
-    session.session_step += args.max_train_steps 
+    session["session_step"] += args.max_train_steps 
     if not os.path.isdir(args.output_dir+'/training'):
         os.makedirs(args.output_dir+'/training')
     with open(sessionFilePath, "w+") as f:
@@ -823,7 +823,7 @@ def main():
     
     # Save final ckpt
     if os.path.isfile(args.output_dir + '/unet/diffusion_pytorch_model.bin'):
-        final_chkpth = args.output_dir + '/' + os.path.basename(os.path.dirname(args.output_dir+'/')) + '_' + str(session.session_step) + '.ckpt'
+        final_chkpth = args.output_dir + '/' + os.path.basename(os.path.dirname(args.output_dir+'/')) + '_' + str(session["session_step"]) + '.ckpt'
         print("Saving model to " + final_chkpth)
         if os.path.isfile(final_chkpth):
             os.remove(final_chkpth)
