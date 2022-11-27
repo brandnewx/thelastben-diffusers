@@ -824,9 +824,12 @@ def main():
     # Save final ckpt
     if os.path.isfile(args.output_dir + '/unet/diffusion_pytorch_model.bin'):
         final_chkpth = args.output_dir + '/' + os.path.basename(os.path.dirname(args.output_dir+'/')) + '_' + str(session.session_step) + '.ckpt'
+        print("Saving model to " + final_chkpth)
         if os.path.isfile(final_chkpth):
             os.remove(final_chkpth)
         subprocess.call('python3 ' + args.diffusers_to_ckpt_script_path + ' --model_path ' + args.output_dir + ' --checkpoint_path ' + final_chkpth + ' --half', shell=True)
+    else:
+        print('No model to save!');
 
 if __name__ == "__main__":
     main()
