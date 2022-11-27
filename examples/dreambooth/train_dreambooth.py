@@ -818,7 +818,7 @@ def main():
     session.session_step += args.max_train_steps 
     if not os.path.isdir(args.output_dir+'/training'):
         os.path.makedirs(+args.output_dir+'/training')
-    with open(sessionFilePath, "w") as f:
+    with open(sessionFilePath, "w+") as f:
         f.write(pickle.dumps(session))
     
     # Save final ckpt
