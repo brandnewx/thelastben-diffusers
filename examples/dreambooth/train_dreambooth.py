@@ -829,7 +829,7 @@ def main():
             os.remove(final_chkpth)
         subprocess.call('python3 ' + args.diffusers_to_ckpt_script_path + ' --model_path ' + args.output_dir + ' --checkpoint_path ' + final_chkpth + ' --half', shell=True)
     else:
-        print('No model to save!');
+        print('No model to save!')
 
 if __name__ == "__main__":
     main()
