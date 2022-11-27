@@ -706,8 +706,8 @@ def main():
             fll=round(fll/4)
             pr=bar(fll)
 
-            if accelerator.is_main_process:
-                print("Progress:"+pr)
+            if accelerator.sync_gradients and accelerator.is_main_process:
+                print("")
                 sys.stdout.flush()
             
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
