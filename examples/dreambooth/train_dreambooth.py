@@ -356,7 +356,7 @@ class DreamBoothDataset(Dataset):
 
         example["instance_images"] = self.image_transforms(instance_image)
         example["instance_prompt_ids"] = self.tokenizer(
-            instance_prompt,su
+            instance_prompt,
             padding="do_not_pad",
             truncation=True,
             max_length=self.tokenizer.model_max_length,
