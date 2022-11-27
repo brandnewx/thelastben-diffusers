@@ -705,6 +705,10 @@ def main():
             fll=round((global_step*100)/args.max_train_steps)
             fll=round(fll/4)
             pr=bar(fll)
+
+            if accelerator.is_main_process:
+                print("Progress:"+pr)
+                sys.stdout.flush()
             
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
@@ -713,9 +717,6 @@ def main():
 
             if global_step >= args.max_train_steps:
                 break
-
-            if accelerator.is_main_process:
-                sys.stdout.flush()
 
             if args.train_text_encoder and global_step == args.stop_text_encoder_training and global_step >= 30:
               if accelerator.is_main_process:
