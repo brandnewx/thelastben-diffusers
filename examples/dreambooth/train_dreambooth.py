@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 import subprocess
 import sys
+import shutil
 
 import torch
 import torch.nn.functional as F
@@ -732,8 +733,9 @@ def main():
               if accelerator.is_main_process:
                 print(" [0;32m" +" Freezing the text_encoder ..."+" [0m")                
                 frz_dir=args.output_dir + "/text_encoder_frozen"
-                if os.path.exists(frz_dir):
-                  subprocess.call('rm -r '+ frz_dir, shell=True)
+                if os.path.isdir(frz_dir):
+                  #subprocess.call('rm -r '+ frz_dir, shell=True)
+                  shutil.rmtree(frz_dir)
                 os.mkdir(frz_dir)
                 pipeline = StableDiffusionPipeline.from_pretrained(
                     args.pretrained_model_name_or_path,
@@ -763,14 +765,17 @@ def main():
                      pipeline.save_pretrained(save_dir)
                      frz_dir=args.output_dir + "/text_encoder_frozen"                    
                      if args.train_text_encoder and os.path.exists(frz_dir):
-                        subprocess.call('rm -r '+save_dir+'/text_encoder/*.*', shell=True)
-                        subprocess.call('cp -f '+frz_dir +'/*.* '+ save_dir+'/text_encoder', shell=True)                     
+                        #subprocess.call('rm -r '+save_dir+'/text_encoder/*.*', shell=True)
+                        #subprocess.call('cp -f '+frz_dir +'/*.* '+ save_dir+'/text_encoder', shell=True)
+                        shutil.rmtree(save_dir+'/text_encoder')
+                        shutil.copytree(frz_dir, save_dir+'/text_encoder')                     
                      chkpth=args.Session_dir+"/"+inst+".ckpt"
                      subprocess.call('python3 ' + args.diffusers_to_ckpt_script_path + ' --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
                      i=i+args.save_n_steps
 
                      if not args.save_intermediary_dirs:
-                        subprocess.call('rm -rf '+ save_dir, shell=True)
+                        #subprocess.call('rm -rf '+ save_dir, shell=True)
+                        shutil.rmtree(save_dir)
             
         accelerator.wait_for_everyone()
 
@@ -795,7 +800,8 @@ def main():
         )
         pipeline.save_pretrained(args.output_dir)
         txt_dir=args.output_dir + "/text_encoder_trained"
-        subprocess.call('rm -r '+txt_dir, shell=True)
+        #subprocess.call('rm -r '+txt_dir, shell=True)
+        shutil.rmtree(txt_dir)
      
       else:
         pipeline = StableDiffusionPipeline.from_pretrained(
@@ -806,8 +812,9 @@ def main():
         frz_dir=args.output_dir + "/text_encoder_frozen"
         pipeline.save_pretrained(args.output_dir)
         if args.train_text_encoder and os.path.exists(frz_dir):
-           subprocess.call('mv -f '+frz_dir +'/*.* '+ args.output_dir+'/text_encoder', shell=True)
-           subprocess.call('rm -r '+ frz_dir, shell=True) 
+           #subprocess.call('mv -f '+frz_dir +'/*.* '+ args.output_dir+'/text_encoder', shell=True)
+           #subprocess.call('rm -r '+ frz_dir, shell=True)
+           shutil.move(frz_dir, args.output_dir+'/text_encoder') 
 
         if args.push_to_hub:
             repo.push_to_hub(commit_message="End of training", blocking=False, auto_lfs_prune=True)
@@ -831,7 +838,7 @@ def main():
         if os.path.isfile(final_chkpth):
             print("Saved model to " + final_chkpth)
         else:
-            print("Failed to save model)
+            print("Failed to save model to " + final_chkpth)
         sys.stdout.flush()
     else:
         print('No model to save!')
