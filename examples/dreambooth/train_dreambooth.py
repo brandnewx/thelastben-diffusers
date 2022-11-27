@@ -817,7 +817,7 @@ def main():
     # Save state for resuming
     session.session_step += args.max_train_steps 
     if not os.path.isdir(args.output_dir+'/training'):
-        os.makedirs(args.output_dir+'/training)
+        os.makedirs(args.output_dir+'/training')
     with open(sessionFilePath, "w+") as f:
         f.write(pickle.dumps(session))
     
