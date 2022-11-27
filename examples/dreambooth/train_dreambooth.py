@@ -23,6 +23,7 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
+import pickle
 
 logger = get_logger(__name__)
 
@@ -642,6 +643,15 @@ def main():
     progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process, total=len(range(0,args.max_train_steps,1)))
     global_step = 0
 
+    # Load last session if exists
+    session = { "session_step": 0 }
+    sessionFilePath = args.output_dir+'/training/session.bin'
+    if not os.path.isdir(args.output_dir+'/training'):
+        os.path.makedirs(args.output_dir+'/training')
+    if os.path.isfile(sessionFilePath) and os.path.getsize(sessionFilePath) > 0 and os.path.getsize(sessionFilePath) < 1000:
+        with open(sessionFilePath, "r") as f: 
+            session = pickle.loads(f.readall())
+
     for epoch in range(args.num_train_epochs):
         unet.train()
         if args.train_text_encoder:
@@ -734,7 +744,7 @@ def main():
                          
             if args.save_n_steps >= 200:
                if global_step+1 < args.max_train_steps and global_step+1==i:
-                  ckpt_name = "_" + str(global_step+1)
+                  ckpt_name = "_" + str(session.session_step+global_step+1)
                   save_dir = Path(args.output_dir+ckpt_name)
                   save_dir=str(save_dir)
                   save_dir=save_dir.replace(" ", "_")                    
@@ -803,6 +813,20 @@ def main():
             repo.push_to_hub(commit_message="End of training", blocking=False, auto_lfs_prune=True)
 
     accelerator.end_training()
+
+    # Save state for resuming
+    session.session_step += args.max_train_steps 
+    if not os.path.isdir(args.output_dir+'/training'):
+        os.path.makedirs(+args.output_dir+'/training')
+    with open(sessionFilePath, "w") as f:
+        f.write(pickle.dumps(session))
+    
+    # Save final ckpt
+    if os.path.isfile(args.output_dir + '/unet/diffusion_pytorch_model.bin'):
+        final_chkpth = args.output_dir + '/' + os.path.basename(os.path.dirname(args.output_dir+'/')) + '_' + str(session.session_step) + '.ckpt'
+        if os.path.isfile(final_chkpth):
+            os.remove(final_chkpth)
+        subprocess.call('python3 ' + args.diffusers_to_ckpt_script_path + ' --model_path ' + args.output_dir + ' --checkpoint_path ' + final_chkpth + ' --half', shell=True)
 
 if __name__ == "__main__":
     main()
