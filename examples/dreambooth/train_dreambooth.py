@@ -33,8 +33,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
         "--save_intermediary_dirs",
-        default=False,
-        action="store_true",
+        default=0,
+        type=int,
         help="Flag to save intermediary dirs.",
     )
     parser.add_argument(
@@ -769,7 +769,7 @@ def main():
                      subprocess.call('python3 ' + args.diffusers_to_ckpt_script_path + ' --model_path ' + save_dir + ' --checkpoint_path ' + chkpth + ' --half', shell=True)
                      i=i+args.save_n_steps
 
-                     if not args.save_intermediary_dirs:
+                     if args.save_intermediary_dirs == 0:
                         #subprocess.call('rm -rf '+ save_dir, shell=True)
                         shutil.rmtree(save_dir)
 
