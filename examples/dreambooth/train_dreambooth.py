@@ -706,7 +706,7 @@ def main():
             fll=round(fll/4)
             pr=bar(fll)
 
-            if accelerator.sync_gradients and accelerator.is_main_process:
+            if accelerator.sync_gradients and accelerator.is_main_process and global_step % 20 == 0:
                 print("")
                 sys.stdout.flush()
             
