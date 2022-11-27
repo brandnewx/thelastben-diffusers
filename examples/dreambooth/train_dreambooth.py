@@ -714,6 +714,9 @@ def main():
             if global_step >= args.max_train_steps:
                 break
 
+            if accelerator.is_main_process:
+                stdout.flush()
+
             if args.train_text_encoder and global_step == args.stop_text_encoder_training and global_step >= 30:
               if accelerator.is_main_process:
                 print(" [0;32m" +" Freezing the text_encoder ..."+" [0m")                
