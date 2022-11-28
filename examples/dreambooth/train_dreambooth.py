@@ -645,6 +645,7 @@ def main():
     global_step = 0
 
     # Load last session if exists
+    froze_text = False;
     session = { "session_step": 0 }
     sessionFilePath = args.output_dir+'/training/session.bin'
     if not os.path.isdir(args.output_dir+'/training'):
@@ -726,20 +727,22 @@ def main():
                 break
 
             if args.train_text_encoder and global_step == args.stop_text_encoder_training and global_step >= 30:
-              if accelerator.is_main_process:
-                print(" [0;32m" +" Freezing the text_encoder ..."+" [0m")                
-                frz_dir=args.output_dir + "/text_encoder_frozen"
-                if os.path.isdir(frz_dir):
-                  #subprocess.call('rm -r '+ frz_dir, shell=True)
-                  shutil.rmtree(frz_dir)
-                os.mkdir(frz_dir)
-                pipeline = StableDiffusionPipeline.from_pretrained(
-                    args.pretrained_model_name_or_path,
-                    unet=accelerator.unwrap_model(unet),
-                    text_encoder=accelerator.unwrap_model(text_encoder),
-                )
-                pipeline.text_encoder.save_pretrained(frz_dir)
-                         
+                if accelerator.is_main_process:
+                    print(" [0;32m" +" Freezing the text_encoder ..."+" [0m")                
+                    frz_dir=args.output_dir + "/text_encoder_frozen"
+                    if os.path.isdir(frz_dir):
+                        #subprocess.call('rm -r '+ frz_dir, shell=True)
+                        shutil.rmtree(frz_dir)
+                    os.mkdir(frz_dir)
+                    pipeline = StableDiffusionPipeline.from_pretrained(
+                        args.pretrained_model_name_or_path,
+                        unet=accelerator.unwrap_model(unet),
+                        text_encoder=accelerator.unwrap_model(text_encoder),
+                    )
+                    pipeline.text_encoder.save_pretrained(frz_dir)
+                else:
+                    print("DID NOT freeze text encoder as not in the main process!")
+                
             if args.save_n_steps >= 200:
                if global_step+1 < args.max_train_steps and global_step+1==i:
                   ckpt_name = "_" + str(session["session_step"]+global_step+1)
