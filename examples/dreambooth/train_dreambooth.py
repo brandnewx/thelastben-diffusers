@@ -651,7 +651,9 @@ def main():
     if not os.path.isdir(args.output_dir+'/training'):
         os.makedirs(args.output_dir+'/training')
     if os.path.isfile(sessionFilePath) and os.path.getsize(sessionFilePath) > 0 and os.path.getsize(sessionFilePath) < 10000:
-        with open(sessionFilePath, "rb") as f: 
+        # with open(sessionFilePath, "rb") as f: 
+        #     session = pickle.load(f)
+        with open(sessionFilePath, "r") as f: 
             session = json.load(f)
 
     for epoch in range(args.num_train_epochs):
@@ -832,8 +834,9 @@ def main():
     session["session_step"] += args.max_train_steps 
     if not os.path.isdir(args.output_dir+'/training'):
         os.makedirs(args.output_dir+'/training')
-    with open(sessionFilePath, "wb+") as f:
-        #pickle.dump(session, f, protocol=pickle.HIGHEST_PROTOCOL)
+    # with open(sessionFilePath, "wb+") as f:
+    #     pickle.dump(session, f, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(sessionFilePath, "w+") as f:
         json.dump(session, f)
     
     # Save final ckpt
