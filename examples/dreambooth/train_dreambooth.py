@@ -24,7 +24,7 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
-import pickle
+import json
 
 logger = get_logger(__name__)
 
@@ -647,12 +647,12 @@ def main():
     # Load last session if exists
     froze_text = False;
     session = { "session_step": 0 }
-    sessionFilePath = args.output_dir+'/training/session.bin'
+    sessionFilePath = args.output_dir+'/training/session.json'
     if not os.path.isdir(args.output_dir+'/training'):
         os.makedirs(args.output_dir+'/training')
-    if os.path.isfile(sessionFilePath) and os.path.getsize(sessionFilePath) > 0 and os.path.getsize(sessionFilePath) < 1000:
+    if os.path.isfile(sessionFilePath) and os.path.getsize(sessionFilePath) > 0 and os.path.getsize(sessionFilePath) < 10000:
         with open(sessionFilePath, "rb") as f: 
-            session = pickle.load(f)
+            session = json.load(f)
 
     for epoch in range(args.num_train_epochs):
         unet.train()
@@ -833,7 +833,8 @@ def main():
     if not os.path.isdir(args.output_dir+'/training'):
         os.makedirs(args.output_dir+'/training')
     with open(sessionFilePath, "wb+") as f:
-        pickle.dump(session, f, protocol=pickle.HIGHEST_PROTOCOL)
+        #pickle.dump(session, f, protocol=pickle.HIGHEST_PROTOCOL)
+        json.dump(session, f)
     
     # Save final ckpt
     if os.path.isfile(args.output_dir + '/unet/diffusion_pytorch_model.bin'):
