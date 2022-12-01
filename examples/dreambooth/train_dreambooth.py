@@ -16,7 +16,7 @@ from torch.utils.data import Dataset
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
-from diffusers import AutoencoderKL, DDPMScheduler, StableDiffusionPipeline, UNet2DConditionModel
+from diffusers import AutoencoderKL, DDPMScheduler, DDIMScheduler, StableDiffusionPipeline, UNet2DConditionModel
 from diffusers.optimization import get_scheduler
 from huggingface_hub import HfFolder, Repository, whoami
 from PIL import Image
@@ -758,10 +758,12 @@ def main():
                   print(" [1;32mSAVING CHECKPOINT: "+args.Session_dir+"/"+inst+".ckpt")
                   # Create the pipeline using the trained modules and save it.
                   if accelerator.is_main_process:
+                     scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
                      pipeline = StableDiffusionPipeline.from_pretrained(
                            args.pretrained_model_name_or_path,
                            unet=accelerator.unwrap_model(unet),
                            text_encoder=accelerator.unwrap_model(text_encoder),
+                           scheduler=scheduler
                      )
                      pipeline.save_pretrained(save_dir)
                      frz_dir=args.output_dir + "/text_encoder_frozen"                    
