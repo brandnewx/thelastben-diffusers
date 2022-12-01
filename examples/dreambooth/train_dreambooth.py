@@ -765,7 +765,7 @@ def main():
                   # Create the pipeline using the trained modules and save it.
                   if accelerator.is_main_process:
                      pipeline=None
-                     if args.scheduler_name is None:
+                     if args.scheduler_name is None or args.scheduler_name == "":
                         pipeline = StableDiffusionPipeline.from_pretrained(
                             args.pretrained_model_name_or_path,
                             unet=accelerator.unwrap_model(unet),
@@ -832,7 +832,7 @@ def main():
      
       else:
         pipeline=None
-        if args.scheduler_name is None:
+        if args.scheduler_name is None or args.scheduler_name == "":
             pipeline = StableDiffusionPipeline.from_pretrained(
                 args.pretrained_model_name_or_path,
                 unet=accelerator.unwrap_model(unet),
