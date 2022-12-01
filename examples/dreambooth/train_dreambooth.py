@@ -32,6 +32,12 @@ logger = get_logger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
+        "--scheduler_name",
+        type=str,
+        default=None,
+        help="Scheduler name if not the same as model_name",
+    )
+    parser.add_argument(
         "--save_intermediary_dirs",
         default=0,
         type=int,
@@ -758,13 +764,13 @@ def main():
                   print(" [1;32mSAVING CHECKPOINT: "+args.Session_dir+"/"+inst+".ckpt")
                   # Create the pipeline using the trained modules and save it.
                   if accelerator.is_main_process:
-                     scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
                      pipeline = StableDiffusionPipeline.from_pretrained(
-                           args.pretrained_model_name_or_path,
-                           unet=accelerator.unwrap_model(unet),
-                           text_encoder=accelerator.unwrap_model(text_encoder),
-                           scheduler=scheduler
+                        args.pretrained_model_name_or_path,
+                        unet=accelerator.unwrap_model(unet),
+                        text_encoder=accelerator.unwrap_model(text_encoder)
                      )
+                     if args.scheduler_name is not None and args.scheduler_name == "DDIM":
+                        pipeline.scheduler=DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
                      pipeline.save_pretrained(save_dir)
                      frz_dir=args.output_dir + "/text_encoder_frozen"                    
                      if args.train_text_encoder and os.path.exists(frz_dir):
@@ -793,10 +799,12 @@ def main():
          if not os.path.exists(txt_dir):
            os.mkdir(txt_dir)
          pipeline = StableDiffusionPipeline.from_pretrained(
-             args.pretrained_model_name_or_path,
-             unet=accelerator.unwrap_model(unet),
-             text_encoder=accelerator.unwrap_model(text_encoder),
+            args.pretrained_model_name_or_path,
+            unet=accelerator.unwrap_model(unet),
+            text_encoder=accelerator.unwrap_model(text_encoder)
          )
+         if args.scheduler_name is not None and args.scheduler_name == "DDIM":
+            pipeline.scheduler=DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
          pipeline.text_encoder.save_pretrained(txt_dir)       
 
       elif args.train_only_unet:
@@ -812,10 +820,12 @@ def main():
             shutil.rmtree(txt_dir)
      
       else:
+        scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
         pipeline = StableDiffusionPipeline.from_pretrained(
             args.pretrained_model_name_or_path,
             unet=accelerator.unwrap_model(unet),
             text_encoder=accelerator.unwrap_model(text_encoder),
+            scheduler=scheduler
         )
         frz_dir=args.output_dir + "/text_encoder_frozen"
         pipeline.save_pretrained(args.output_dir)
