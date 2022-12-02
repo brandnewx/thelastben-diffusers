@@ -30,6 +30,9 @@ except ImportError:
 from diffusers import (
     AutoencoderKL,
     DDIMScheduler,
+    DPMSolverMultistepScheduler,
+    EulerAncestralDiscreteScheduler,
+    EulerDiscreteScheduler,
     LDMTextToImagePipeline,
     LMSDiscreteScheduler,
     PNDMScheduler,
@@ -208,6 +211,7 @@ def create_unet_diffusers_config(original_config):
     """
     Creates a config for the diffusers based on the config of the LDM model.
     """
+    model_params = original_config.model.params
     unet_params = original_config.model.params.unet_config.params
 
     block_out_channels = [unet_params.model_channels * mult for mult in unet_params.channel_mult]
@@ -227,7 +231,7 @@ def create_unet_diffusers_config(original_config):
         resolution //= 2
 
     config = dict(
-        sample_size=unet_params.image_size,
+        sample_size=model_params.image_size,
         in_channels=unet_params.in_channels,
         out_channels=unet_params.out_channels,
         down_block_types=tuple(down_block_types),
@@ -647,7 +651,24 @@ if __name__ == "__main__":
         "--scheduler_type",
         default="pndm",
         type=str,
-        help="Type of scheduler to use. Should be one of ['pndm', 'lms', 'ddim']",
+        help="Type of scheduler to use. Should be one of ['pndm', 'lms', 'ddim', 'euler', 'euler-ancest', 'dpm']",
+    )
+    
+    parser.add_argument(
+        "--session_dir",
+        default="",
+        type=str,
+        help="Sessions dir",
+    )    
+    
+    parser.add_argument(
+        "--extract_ema",
+        action="store_true",
+        help=(
+            "Only relevant for checkpoints that have both EMA and non-EMA weights. Whether to extract the EMA weights"
+            " or not. Defaults to `False`. Add `--extract_ema` to extract the EMA weights. EMA weights usually yield"
+            " higher quality images for inference. Non-EMA weights are usually better to continue fine-tuning."
+        ),
     )
 
     parser.add_argument(
@@ -692,6 +713,16 @@ if __name__ == "__main__":
         )
     elif args.scheduler_type == "lms":
         scheduler = LMSDiscreteScheduler(beta_start=beta_start, beta_end=beta_end, beta_schedule="scaled_linear")
+    elif args.scheduler_type == "euler":
+        scheduler = EulerDiscreteScheduler(beta_start=beta_start, beta_end=beta_end, beta_schedule="scaled_linear")
+    elif args.scheduler_type == "euler-ancestral":
+        scheduler = EulerAncestralDiscreteScheduler(
+            beta_start=beta_start, beta_end=beta_end, beta_schedule="scaled_linear"
+        )
+    elif args.scheduler_type == "dpm":
+        scheduler = DPMSolverMultistepScheduler(
+            beta_start=beta_start, beta_end=beta_end, beta_schedule="scaled_linear"
+        )
     elif args.scheduler_type == "ddim":
         scheduler = DDIMScheduler(
             beta_start=beta_start,

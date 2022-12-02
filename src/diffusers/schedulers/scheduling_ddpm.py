@@ -21,8 +21,8 @@ from typing import Optional, Tuple, Union
 import numpy as np
 import torch
 
-from ..configuration_utils import ConfigMixin, register_to_config
-from ..utils import BaseOutput, deprecate
+from ..configuration_utils import ConfigMixin, FrozenDict, register_to_config
+from ..utils import _COMPATIBLE_STABLE_DIFFUSION_SCHEDULERS, BaseOutput, deprecate
 from .scheduling_utils import SchedulerMixin
 
 
@@ -80,8 +80,8 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
 
     [`~ConfigMixin`] takes care of storing all config attributes that are passed in the scheduler's `__init__`
     function, such as `num_train_timesteps`. They can be accessed via `scheduler.config.num_train_timesteps`.
-    [`~ConfigMixin`] also provides general loading and saving functionality via the [`~ConfigMixin.save_config`] and
-    [`~ConfigMixin.from_config`] functions.
+    [`SchedulerMixin`] provides general loading and saving functionality via the [`SchedulerMixin.save_pretrained`] and
+    [`~SchedulerMixin.from_pretrained`] functions.
 
     For more details, see the original paper: https://arxiv.org/abs/2006.11239
 
@@ -99,8 +99,13 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
             `fixed_small_log`, `fixed_large`, `fixed_large_log`, `learned` or `learned_range`.
         clip_sample (`bool`, default `True`):
             option to clip predicted sample between -1 and 1 for numerical stability.
-
+        prediction_type (`str`, default `epsilon`):
+            indicates whether the model predicts the noise (epsilon), or the samples. One of `epsilon`, `sample`.
+            `v-prediction` is not supported for this scheduler.
     """
+
+    _compatibles = _COMPATIBLE_STABLE_DIFFUSION_SCHEDULERS.copy()
+    _deprecated_kwargs = ["predict_epsilon"]
 
     @register_to_config
     def __init__(
@@ -112,14 +117,16 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         trained_betas: Optional[np.ndarray] = None,
         variance_type: str = "fixed_small",
         clip_sample: bool = True,
+        prediction_type: str = "epsilon",
         **kwargs,
     ):
-        deprecate(
-            "tensor_format",
-            "0.6.0",
-            "If you're running your code in PyTorch, you can safely remove this argument.",
-            take_from=kwargs,
+        message = (
+            "Please make sure to instantiate your scheduler with `prediction_type` instead. E.g. `scheduler ="
+            " DDPMScheduler.from_pretrained(<model_id>, prediction_type='epsilon')`."
         )
+        predict_epsilon = deprecate("predict_epsilon", "0.10.0", message, take_from=kwargs)
+        if predict_epsilon is not None:
+            self.register_to_config(prediction_type="epsilon" if predict_epsilon else "sample")
 
         if trained_betas is not None:
             self.betas = torch.from_numpy(trained_betas)
@@ -133,6 +140,10 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         elif beta_schedule == "squaredcos_cap_v2":
             # Glide cosine schedule
             self.betas = betas_for_alpha_bar(num_train_timesteps)
+        elif beta_schedule == "sigmoid":
+            # GeoDiff sigmoid schedule
+            betas = torch.linspace(-6, 6, num_train_timesteps)
+            self.betas = torch.sigmoid(betas) * (beta_end - beta_start) + beta_start
         else:
             raise NotImplementedError(f"{beta_schedule} does is not implemented for {self.__class__}")
 
@@ -196,6 +207,7 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         # for rl-diffuser https://arxiv.org/abs/2205.09991
         elif variance_type == "fixed_small_log":
             variance = torch.log(torch.clamp(variance, min=1e-20))
+            variance = torch.exp(0.5 * variance)
         elif variance_type == "fixed_large":
             variance = self.betas[t]
         elif variance_type == "fixed_large_log":
@@ -216,9 +228,9 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         model_output: torch.FloatTensor,
         timestep: int,
         sample: torch.FloatTensor,
-        predict_epsilon=True,
         generator=None,
         return_dict: bool = True,
+        **kwargs,
     ) -> Union[DDPMSchedulerOutput, Tuple]:
         """
         Predict the sample at the previous timestep by reversing the SDE. Core function to propagate the diffusion
@@ -229,8 +241,6 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
             timestep (`int`): current discrete timestep in the diffusion chain.
             sample (`torch.FloatTensor`):
                 current instance of sample being created by diffusion process.
-            predict_epsilon (`bool`):
-                optional flag to use when model predicts the samples directly instead of the noise, epsilon.
             generator: random number generator.
             return_dict (`bool`): option for returning tuple rather than DDPMSchedulerOutput class
 
@@ -240,6 +250,16 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
             returning a tuple, the first element is the sample tensor.
 
         """
+        message = (
+            "Please make sure to instantiate your scheduler with `prediction_type` instead. E.g. `scheduler ="
+            " DDPMScheduler.from_pretrained(<model_id>, prediction_type='epsilon')`."
+        )
+        predict_epsilon = deprecate("predict_epsilon", "0.10.0", message, take_from=kwargs)
+        if predict_epsilon is not None:
+            new_config = dict(self.config)
+            new_config["prediction_type"] = "epsilon" if predict_epsilon else "sample"
+            self._internal_dict = FrozenDict(new_config)
+
         t = timestep
 
         if model_output.shape[1] == sample.shape[1] * 2 and self.variance_type in ["learned", "learned_range"]:
@@ -255,10 +275,15 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
 
         # 2. compute predicted original sample from predicted noise also called
         # "predicted x_0" of formula (15) from https://arxiv.org/pdf/2006.11239.pdf
-        if predict_epsilon:
+        if self.config.prediction_type == "epsilon":
             pred_original_sample = (sample - beta_prod_t ** (0.5) * model_output) / alpha_prod_t ** (0.5)
-        else:
+        elif self.config.prediction_type == "sample":
             pred_original_sample = model_output
+        else:
+            raise ValueError(
+                f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample` "
+                " for the DDPMScheduler."
+            )
 
         # 3. Clip "predicted x_0"
         if self.config.clip_sample:
@@ -276,10 +301,19 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         # 6. Add noise
         variance = 0
         if t > 0:
-            noise = torch.randn(
-                model_output.size(), dtype=model_output.dtype, layout=model_output.layout, generator=generator
-            ).to(model_output.device)
-            variance = (self._get_variance(t, predicted_variance=predicted_variance) ** 0.5) * noise
+            device = model_output.device
+            if device.type == "mps":
+                # randn does not work reproducibly on mps
+                variance_noise = torch.randn(model_output.shape, dtype=model_output.dtype, generator=generator)
+                variance_noise = variance_noise.to(device)
+            else:
+                variance_noise = torch.randn(
+                    model_output.shape, generator=generator, device=device, dtype=model_output.dtype
+                )
+            if self.variance_type == "fixed_small_log":
+                variance = self._get_variance(t, predicted_variance=predicted_variance) * variance_noise
+            else:
+                variance = (self._get_variance(t, predicted_variance=predicted_variance) ** 0.5) * variance_noise
 
         pred_prev_sample = pred_prev_sample + variance
 
@@ -294,11 +328,9 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         noise: torch.FloatTensor,
         timesteps: torch.IntTensor,
     ) -> torch.FloatTensor:
-        if self.alphas_cumprod.device != original_samples.device:
-            self.alphas_cumprod = self.alphas_cumprod.to(original_samples.device)
-
-        if timesteps.device != original_samples.device:
-            timesteps = timesteps.to(original_samples.device)
+        # Make sure alphas_cumprod and timestep have same device and dtype as original_samples
+        self.alphas_cumprod = self.alphas_cumprod.to(device=original_samples.device, dtype=original_samples.dtype)
+        timesteps = timesteps.to(original_samples.device)
 
         sqrt_alpha_prod = self.alphas_cumprod[timesteps] ** 0.5
         sqrt_alpha_prod = sqrt_alpha_prod.flatten()
@@ -312,6 +344,26 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
 
         noisy_samples = sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
         return noisy_samples
+
+    def get_velocity(
+        self, sample: torch.FloatTensor, noise: torch.FloatTensor, timesteps: torch.IntTensor
+    ) -> torch.FloatTensor:
+        # Make sure alphas_cumprod and timestep have same device and dtype as sample
+        self.alphas_cumprod = self.alphas_cumprod.to(device=sample.device, dtype=sample.dtype)
+        timesteps = timesteps.to(sample.device)
+
+        sqrt_alpha_prod = self.alphas_cumprod[timesteps] ** 0.5
+        sqrt_alpha_prod = sqrt_alpha_prod.flatten()
+        while len(sqrt_alpha_prod.shape) < len(sample.shape):
+            sqrt_alpha_prod = sqrt_alpha_prod.unsqueeze(-1)
+
+        sqrt_one_minus_alpha_prod = (1 - self.alphas_cumprod[timesteps]) ** 0.5
+        sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.flatten()
+        while len(sqrt_one_minus_alpha_prod.shape) < len(sample.shape):
+            sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.unsqueeze(-1)
+
+        velocity = sqrt_alpha_prod * noise - sqrt_one_minus_alpha_prod * sample
+        return velocity
 
     def __len__(self):
         return self.config.num_train_timesteps
