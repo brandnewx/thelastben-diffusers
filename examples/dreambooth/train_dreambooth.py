@@ -688,12 +688,13 @@ def main():
                 model_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
                 # Get the target for loss depending on the prediction type
-                if noise_scheduler.config.prediction_type == "epsilon":
-                    target = noise
-                elif noise_scheduler.config.prediction_type == "v_prediction":
-                    target = noise_scheduler.get_velocity(latents, noise, timesteps)
-                else:
-                    raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
+                # if noise_scheduler.config.prediction_type == "epsilon":
+                #     target = noise
+                # elif noise_scheduler.config.prediction_type == "v_prediction":
+                #     target = noise_scheduler.get_velocity(latents, noise, timesteps)
+                # else:
+                #     raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
+                target = noise
 
                 if args.with_prior_preservation:
                     # Chunk the noise and model_pred into two parts and compute the loss on each part separately.
