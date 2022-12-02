@@ -207,7 +207,7 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         # for rl-diffuser https://arxiv.org/abs/2205.09991
         elif variance_type == "fixed_small_log":
             variance = torch.log(torch.clamp(variance, min=1e-20))
-            variance = torch.exp(0.5 * variance)
+            #variance = torch.exp(0.5 * variance)
         elif variance_type == "fixed_large":
             variance = self.betas[t]
         elif variance_type == "fixed_large_log":
@@ -301,19 +301,10 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         # 6. Add noise
         variance = 0
         if t > 0:
-            device = model_output.device
-            if device.type == "mps":
-                # randn does not work reproducibly on mps
-                variance_noise = torch.randn(model_output.shape, dtype=model_output.dtype, generator=generator)
-                variance_noise = variance_noise.to(device)
-            else:
-                variance_noise = torch.randn(
-                    model_output.shape, generator=generator, device=device, dtype=model_output.dtype
-                )
-            if self.variance_type == "fixed_small_log":
-                variance = self._get_variance(t, predicted_variance=predicted_variance) * variance_noise
-            else:
-                variance = (self._get_variance(t, predicted_variance=predicted_variance) ** 0.5) * variance_noise
+            noise = torch.randn(
+                model_output.size(), dtype=model_output.dtype, layout=model_output.layout, generator=generator
+            ).to(model_output.device)
+            variance = (self._get_variance(t, predicted_variance=predicted_variance) ** 0.5) * noise
 
         pred_prev_sample = pred_prev_sample + variance
 
@@ -328,9 +319,11 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         noise: torch.FloatTensor,
         timesteps: torch.IntTensor,
     ) -> torch.FloatTensor:
-        # Make sure alphas_cumprod and timestep have same device and dtype as original_samples
-        self.alphas_cumprod = self.alphas_cumprod.to(device=original_samples.device, dtype=original_samples.dtype)
-        timesteps = timesteps.to(original_samples.device)
+        if self.alphas_cumprod.device != original_samples.device:
+            self.alphas_cumprod = self.alphas_cumprod.to(original_samples.device)
+
+        if timesteps.device != original_samples.device:
+            timesteps = timesteps.to(original_samples.device)
 
         sqrt_alpha_prod = self.alphas_cumprod[timesteps] ** 0.5
         sqrt_alpha_prod = sqrt_alpha_prod.flatten()
