@@ -3,7 +3,7 @@
 # 2. run `make deps_table_update``
 deps = {
     "Pillow": "Pillow<10.0",
-    "accelerate": "accelerate==0.15.0",
+    "accelerate": "accelerate==0.14.0",
     "black": "black==22.8",
     "datasets": "datasets",
     "filelock": "filelock",
