@@ -27,5 +27,5 @@ deps = {
     "tensorboard": "tensorboard",
     "torch": "torch>=1.4",
     "torchvision": "torchvision",
-    "transformers": "transformers==4.24.0",
+    "transformers": "transformers==4.23.1",
 }

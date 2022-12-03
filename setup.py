@@ -103,7 +103,7 @@ _deps = [
     "tensorboard",
     "torch>=1.4",
     "torchvision",
-    "transformers==4.24.0",
+    "transformers==4.23.1",
 ]
 
 # this is a lookup table with items like:
