@@ -79,7 +79,7 @@ from setuptools import find_packages, setup
 # 2. once modified, run: `make deps_table_update` to update src/diffusers/dependency_versions_table.py
 _deps = [
     "Pillow<10.0",  # keep the PIL.Image.Resampling deprecation away
-    "accelerate==0.14.0",
+    "accelerate==0.15.0",
     "black==22.8",
     "datasets",
     "filelock",
@@ -103,7 +103,7 @@ _deps = [
     "tensorboard",
     "torch>=1.4",
     "torchvision",
-    "transformers>=4.21.0",
+    "transformers==4.24.00",
 ]
 
 # this is a lookup table with items like:

@@ -3,7 +3,7 @@
 # 2. run `make deps_table_update``
 deps = {
     "Pillow": "Pillow<10.0",
-    "accelerate": "accelerate==0.14.0",
+    "accelerate": "accelerate==0.15.0",
     "black": "black==22.8",
     "datasets": "datasets",
     "filelock": "filelock",
@@ -27,5 +27,5 @@ deps = {
     "tensorboard": "tensorboard",
     "torch": "torch>=1.4",
     "torchvision": "torchvision",
-    "transformers": "transformers>=4.21.0",
+    "transformers": "transformers==4.24.00",
 }
