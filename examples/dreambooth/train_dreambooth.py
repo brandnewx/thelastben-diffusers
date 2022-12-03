@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument(
         "--scheduler_name",
         type=str,
-        default=None,
+        default="PRETRAINED",
         help="Scheduler name if not the same as model_name",
     )
     parser.add_argument(
@@ -765,7 +765,7 @@ def main():
                   # Create the pipeline using the trained modules and save it.
                   if accelerator.is_main_process:
                      pipeline=None
-                     if args.scheduler_name is None or args.scheduler_name == "":
+                     if args.scheduler_name == "PRETRAINED":
                         pipeline = StableDiffusionPipeline.from_pretrained(
                             args.pretrained_model_name_or_path,
                             unet=accelerator.unwrap_model(unet),
@@ -832,7 +832,7 @@ def main():
      
       else:
         pipeline=None
-        if args.scheduler_name is None or args.scheduler_name == "":
+        if args.scheduler_name == "PRETRAINED":
             pipeline = StableDiffusionPipeline.from_pretrained(
                 args.pretrained_model_name_or_path,
                 unet=accelerator.unwrap_model(unet),
